@@ -180,4 +180,4 @@ if __name__ == "__main__":
     plt.ylabel('Win Rate')
     plt.title('Player Win Rate Over Time with SARSA')
     plt.grid()
-    plt.show()
+    plt.savefig("blackjack_sarsa.png")

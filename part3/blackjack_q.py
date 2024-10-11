@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 class Deck:
-    def __init__(self):                         #10   J   Q   K
+    def __init__(self):  #                       10  J   Q   K
         self.cards = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10] * 4
         self.shuffle()
 
@@ -16,7 +16,7 @@ class Deck:
             self.reset_deck()
         return self.cards.pop()
 
-    def reset_deck(self):                       #10   J   Q   K
+    def reset_deck(self):   #                    10  J   Q   K
         self.cards = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 10] * 4
         self.shuffle()
 
@@ -57,7 +57,7 @@ class BlackjackGame:
     def get_state(self):
         player_total, usable_ace = self.player_hand.get_total()
         dealer_visible_card = self.dealer_hand.cards[0]
-        return player_total, dealer_visible_card, usable_ace
+        return (player_total, dealer_visible_card, usable_ace)
 
     def player_action(self, action):
         if action == 1:
@@ -73,19 +73,30 @@ class BlackjackGame:
             total, _ = self.dealer_hand.get_total()
         return total
 
-    def play_round(self, player_policy):
+    def play_round(self, agent):
         self.deal_initial_cards()
-        episode = []
+        episode = []  # Collects states and actions
+
+        # Choose the initial action
+        state = self.get_state()
+        action = agent.choose_action(state)
+        episode.append((state, action))
 
         while True:
-            state = self.get_state()
-            action = player_policy(state)
-            episode.append((state, action))
             result = self.player_action(action)
+
+            # If player busts, end the game
             if result == -1:
                 return -1, episode  # Player busts
+
+            # Player sticks
             if action == 0:
                 break
+
+            # Get new state and choose the next action
+            state = self.get_state()
+            action = agent.choose_action(state)
+            episode.append((state, action))
 
         dealer_total = self.dealer_policy()
         player_total, _ = self.player_hand.get_total()
@@ -103,74 +114,50 @@ class BlackjackGame:
         self.deck.reset_deck()
 
 
-class MonteCarloAgent:
-    def __init__(self):
-        # Q[state][action]: A dictionary that stores the Q-values for state-action pairs
-        self.Q = {}  # Q-values for each state and action
-        self.returns = {}  # To keep track of all returns for each (state, action) pair
-        self.policy = {}  # Policy that decides the action for each state
+class QLearningAgent:
+    def __init__(self, alpha=0.1, gamma=0.9):
+        self.Q = defaultdict(list)  # Holds Q-values
+        self.alpha = alpha  # Learning rate
+        self.gamma = gamma  # Discount factor
+        self.epsilon = 0.1  # Exploration rate
+
+    def initialize_state(self, state):
+        if state not in self.Q:
+            self.Q[state] = [0.0, 0.0]  # Initialize Q-values for hit (1) and stick (0)
 
     def choose_action(self, state):
-        # Epsilon-greedy strategy: choose a random action with a probability of epsilon
-        epsilon = 0.1   # 10% chance to choose random action
-        if random.uniform(0, 1) < epsilon:
-            # Explore: randomly choose either action 0 (stick) or action 1 (hit)
-            return random.choice([0, 1])
+        self.initialize_state(state)  # Ensure the state exists in Q
+        if random.uniform(0, 1) < self.epsilon:
+            return random.choice([0, 1])  # Explore: choose a random action
         else:
-            # Exploit: choose the best action based on current Q-values
-            if state in self.Q:
-                if self.Q[state][0] >= self.Q[state][1]:
-                    return 0  # Stick
-                else:
-                    return 1  # Hit
-            else:
-                # If this state has never been seen, default to hitting
-                return 1
-
-    def update_policy(self, state):
-        # Update the policy for a given state based on the Q-values
-        if state in self.Q:
-            if self.Q[state][0] >= self.Q[state][1]:
-                self.policy[state] = 0  # Stick
-            else:
-                self.policy[state] = 1  # Hit
-        else:
-            self.policy[state] = 1  # Default to hitting if the state is unseen
+            return 0 if self.Q[state][0] >= self.Q[state][1] else 1  # Exploit: pick the best action
 
     def update_Q(self, episode, reward):
-        # Update the Q-values based on the episode and final reward
-        G = reward  # The final reward from the game
-        for state, action in episode:
-            # Initialize returns for the (state, action) pair if not already present
-            if (state, action) not in self.returns:
-                self.returns[(state, action)] = []
+        for t in range(len(episode) - 1):
+            state, action = episode[t]
+            next_state, _ = episode[t + 1]  # We don't need next_action in Q-learning
 
-            # Append the final reward to the returns for this (state, action)
-            self.returns[(state, action)].append(G)
+            self.initialize_state(next_state)  # Ensure the next state is initialized
 
-            # Calculate the average return for this (state, action)
-            total_return = sum(self.returns[(state, action)])  # Sum of all returns
-            average_return = total_return / len(self.returns[(state, action)])  # Average return
+            # Q-learning update rule
+            max_next_Q = max(self.Q[next_state])  # Maximum Q-value for next state
+            self.Q[state][action] += self.alpha * (reward + self.gamma * max_next_Q - self.Q[state][action])
 
-            # Update the Q-value for this (state, action)
-            if state not in self.Q:
-                self.Q[state] = [0, 0]  # Initialize Q-values if the state is not present
-            self.Q[state][action] = average_return
-
-            # Update the policy based on the new Q-values
-            self.update_policy(state)
+        # Final state update
+        last_state, last_action = episode[-1]
+        self.Q[last_state][last_action] += self.alpha * (reward - self.Q[last_state][last_action])
 
 
 if __name__ == "__main__":
     game = BlackjackGame()
-    agent = MonteCarloAgent()
+    agent = QLearningAgent()
     rounds = 100000
 
     player_wins, dealer_wins, draws = 0, 0, 0
     win_rate_history = []
 
     for i in range(rounds):
-        result, episode = game.play_round(agent.choose_action)
+        result, episode = game.play_round(agent)
         if result == 1:
             player_wins += 1
         elif result == -1:
@@ -188,12 +175,8 @@ if __name__ == "__main__":
 
     # Plot the win rate over time
     plt.plot(range(1000, rounds + 1, 1000), win_rate_history)
-    plt.xlabel("Rounds")
-    plt.ylabel("Win Rate")
-    plt.title("Player's Win Rate Over Time")
-    plt.savefig("blackjack_monte_carlo.png")
-
-    print(f"Results after {rounds} rounds:")
-    print(f"Player Wins: {player_wins}")
-    print(f"Dealer Wins: {dealer_wins}")
-    print(f"Draws: {draws}")
+    plt.xlabel('Rounds')
+    plt.ylabel('Win Rate')
+    plt.title('Player Win Rate Over Time with Q-Learning')
+    plt.grid()
+    plt.savefig("blackjack_q.png")
