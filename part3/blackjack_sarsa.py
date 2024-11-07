@@ -75,38 +75,45 @@ class BlackjackGame:
 
     def play_round(self, agent):
         self.deal_initial_cards()
-        episode = []
-
-        # Choose the initial action
         state = self.get_state()
         action = agent.choose_action(state)
-        episode.append((state, action))
 
         while True:
             result = self.player_action(action)
 
             # If player busts, we end the game
             if result == -1:
-                return -1, episode  # Player busts
+                agent.update_Q(state, action, -1, None, None)  # Update Q for bust
+                return -1, []  # Player busts
+
+            # Get the new state and choose the next action
+            next_state = self.get_state()
+            next_action = agent.choose_action(next_state)
+
+            # Update Q-values based on the current action
+            agent.update_Q(state, action, 0, next_state, next_action)  # 0 reward as game continues
 
             # Player sticks
             if action == 0:
                 break
 
-            # Get new state and choose the next action
-            state = self.get_state()
-            action = agent.choose_action(state)
-            episode.append((state, action))
+            # Prepare for the next step
+            state, action = next_state, next_action
 
         dealer_total = self.dealer_policy()
         player_total, _ = self.player_hand.get_total()
 
+        # Determine the final result and reward
         if dealer_total > 21 or player_total > dealer_total:
-            return 1, episode  # Player wins
+            final_reward = 1  # Player wins
         elif player_total == dealer_total:
-            return 0, episode  # Draw
+            final_reward = 0  # Draw
         else:
-            return -1, episode  # Dealer wins
+            final_reward = -1  # Dealer wins
+
+        # Update Q-value for the final state-action pair
+        agent.update_Q(state, action, final_reward, None, None)
+        return final_reward, []  # Episode ends without needing to return the episode history
 
     def reset(self):
         self.player_hand.reset()
@@ -127,26 +134,15 @@ class SARSAAgent:
         else:
             return 0 if self.Q[state][0] >= self.Q[state][1] else 1  # Exploit (best action based on Q-values)
 
-    def update_Q(self, episode, reward):
-        for t in range(len(episode) - 1):
-            state, action = episode[t]
-            next_state, next_action = episode[t + 1]
-
-            # SARSA Update formula
+    def update_Q(self, state, action, reward, next_state, next_action):
+        if next_state is not None:
+            # SARSA update for the current step
             self.Q[state][action] += self.alpha * (
                     reward + self.gamma * self.Q[next_state][next_action] - self.Q[state][action]
             )
-
-        # Final state update (when there is no next state-action pair)
-        last_state, last_action = episode[-1]
-        self.Q[last_state][last_action] += self.alpha * (reward - self.Q[last_state][last_action])
-
-    def update_policy(self, state):
-        # Update the policy for a given state based on the Q-values
-        if state in self.Q:
-            self.policy[state] = 0 if self.Q[state][0] >= self.Q[state][1] else 1
         else:
-            self.policy[state] = 1  # Default to hitting if the state is unseen
+            # Final state update (no next action)
+            self.Q[state][action] += self.alpha * (reward - self.Q[state][action])
 
 
 if __name__ == "__main__":
@@ -158,7 +154,7 @@ if __name__ == "__main__":
     win_rate_history = []
 
     for i in range(rounds):
-        result, episode = game.play_round(agent)
+        result, _ = game.play_round(agent)
         if result == 1:
             player_wins += 1
         elif result == -1:
@@ -166,7 +162,6 @@ if __name__ == "__main__":
         else:
             draws += 1
 
-        agent.update_Q(episode, result)
         game.reset()
 
         # Record the win rate every 1000 rounds

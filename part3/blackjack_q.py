@@ -75,38 +75,47 @@ class BlackjackGame:
 
     def play_round(self, agent):
         self.deal_initial_cards()
-        episode = []  # Collects states and actions
 
         # Choose the initial action
         state = self.get_state()
         action = agent.choose_action(state)
-        episode.append((state, action))
 
         while True:
             result = self.player_action(action)
 
-            # If player busts, end the game
+            # If player busts, update Q for bust and end the game
             if result == -1:
-                return -1, episode  # Player busts
+                agent.update_Q(state, action, -1, None)  # Bust reward is -1
+                return -1  # Player busts
+
+            # Get new state and choose the next action
+            next_state = self.get_state()
+            next_action = agent.choose_action(next_state)
+
+            # Q-learning update rule
+            agent.update_Q(state, action, 0, next_state)  # 0 reward as game continues
 
             # Player sticks
             if action == 0:
                 break
 
-            # Get new state and choose the next action
-            state = self.get_state()
-            action = agent.choose_action(state)
-            episode.append((state, action))
+            # Prepare for the next step
+            state, action = next_state, next_action
 
         dealer_total = self.dealer_policy()
         player_total, _ = self.player_hand.get_total()
 
+        # Determine the final result and reward
         if dealer_total > 21 or player_total > dealer_total:
-            return 1, episode  # Player wins
+            final_reward = 1  # Player wins
         elif player_total == dealer_total:
-            return 0, episode  # Draw
+            final_reward = 0  # Draw
         else:
-            return -1, episode  # Dealer wins
+            final_reward = -1  # Dealer wins
+
+        # Update Q-value for the final state-action pair
+        agent.update_Q(state, action, final_reward, None)
+        return final_reward  # Episode ends without needing to return the episode history
 
     def reset(self):
         self.player_hand.reset()
@@ -132,20 +141,17 @@ class QLearningAgent:
         else:
             return 0 if self.Q[state][0] >= self.Q[state][1] else 1  # Exploit: pick the best action
 
-    def update_Q(self, episode, reward):
-        for t in range(len(episode) - 1):
-            state, action = episode[t]
-            next_state, _ = episode[t + 1]  # We don't need next_action in Q-learning
+    def update_Q(self, state, action, reward, next_state):
+        self.initialize_state(state)  # Ensure current state is initialized
 
-            self.initialize_state(next_state)  # Ensure the next state is initialized
-
-            # Q-learning update rule
+        if next_state is not None:
+            self.initialize_state(next_state)  # Ensure next state is initialized
             max_next_Q = max(self.Q[next_state])  # Maximum Q-value for next state
+            # Q-learning update rule
             self.Q[state][action] += self.alpha * (reward + self.gamma * max_next_Q - self.Q[state][action])
-
-        # Final state update
-        last_state, last_action = episode[-1]
-        self.Q[last_state][last_action] += self.alpha * (reward - self.Q[last_state][last_action])
+        else:
+            # Final state update (no next state)
+            self.Q[state][action] += self.alpha * (reward - self.Q[state][action])
 
 
 if __name__ == "__main__":
@@ -157,7 +163,7 @@ if __name__ == "__main__":
     win_rate_history = []
 
     for i in range(rounds):
-        result, episode = game.play_round(agent)
+        result = game.play_round(agent)
         if result == 1:
             player_wins += 1
         elif result == -1:
@@ -165,7 +171,6 @@ if __name__ == "__main__":
         else:
             draws += 1
 
-        agent.update_Q(episode, result)
         game.reset()
 
         # Record the win rate every 1000 rounds
