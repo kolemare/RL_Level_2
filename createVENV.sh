@@ -16,7 +16,7 @@ source $VENV_NAME/bin/activate
 
 # Upgrade pip
 pip install --upgrade pip
-pip install networkx matplotlib
+pip install networkx matplotlib torch ipython numpy
 
 # Deactivate the virtual environment
 deactivate
