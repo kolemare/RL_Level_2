@@ -14,9 +14,21 @@ fi
 # Activate the virtual environment
 source $VENV_NAME/bin/activate
 
-# Upgrade pip
-pip install --upgrade pip
-pip install networkx matplotlib torch ipython numpy
+# Upgrade pip, setuptools, and wheel
+echo "Upgrading pip, setuptools, and wheel..."
+pip install --upgrade pip setuptools wheel
+
+# Install required libraries
+echo "Installing required libraries..."
+pip install networkx matplotlib torch ipython numpy opencv-python gymnasium flappy-bird-gymnasium
+
+# Install flappy-bird-gym
+echo "Installing flappy-bird-gym..."
+pip install git+https://github.com/Talendar/flappy-bird-gym.git
+
+# Verify installation
+echo "Verifying installation..."
+python -c "import gym, flappy_bird_gym; print('Installation successful!')"
 
 # Deactivate the virtual environment
 deactivate
