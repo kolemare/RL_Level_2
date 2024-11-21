@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from model import DQN
+from model import DuelingDQN  # Update to use the Dueling DQN model
 from replay_buffer import ReplayBuffer
 
 
@@ -32,8 +32,8 @@ class DQNAgent:
         )
 
         # Online and target networks
-        self.online_net = DQN(action_size, input_shape=state_shape).to(config["device"])
-        self.target_net = DQN(action_size, input_shape=state_shape).to(config["device"])
+        self.online_net = DuelingDQN(action_size, input_shape=state_shape).to(config["device"])
+        self.target_net = DuelingDQN(action_size, input_shape=state_shape).to(config["device"])
         self.target_net.eval()  # Ensure the target network is in evaluation mode
         self.update_target_network()
 
@@ -41,7 +41,7 @@ class DQNAgent:
         self.optimizer = optim.Adam(self.online_net.parameters(), lr=config["learning_rate"])
 
         # Loss function
-        self.criterion = nn.SmoothL1Loss()  # Huber Loss
+        self.criterion = nn.MSELoss()  # You can also use nn.SmoothL1Loss() for Huber Loss
 
         # Metrics tracking
         self.training_step = 0
@@ -91,9 +91,9 @@ class DQNAgent:
 
         # Compute target Q-values
         with torch.no_grad():
-            target_q_values = rewards + self.config["gamma"] * torch.max(
-                self.target_net(next_states), dim=1, keepdim=True
-            )[0] * (1 - dones)
+            next_q_values = self.target_net(next_states)
+            max_next_q_values = next_q_values.max(dim=1, keepdim=True)[0]
+            target_q_values = rewards + self.config["gamma"] * max_next_q_values * (1 - dones)
 
         # Compute current Q-values
         current_q_values = self.online_net(states).gather(1, actions)

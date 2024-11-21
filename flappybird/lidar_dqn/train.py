@@ -3,6 +3,7 @@ import torch
 from environment import FlappyBirdEnv
 from dqn_agent import DQNAgent
 from config import CONFIG
+import numpy as np
 
 
 def train():
@@ -25,9 +26,13 @@ def train():
     # Tracking progress
     total_rewards = []
     best_reward = float('-inf')
+    start_time = time.time()
+
+    print("Starting training...")
 
     # Training loop
     for episode in range(CONFIG["num_episodes"]):
+        episode_start_time = time.time()
         state = env.reset().flatten()  # Flatten the LiDAR input
         total_reward = 0
         done = False
@@ -43,8 +48,9 @@ def train():
             # Store the experience in the replay buffer
             agent.store_experience(state, action, reward, next_state, done)
 
-            # Train the agent
-            agent.train()
+            # Train the agent if the replay buffer has enough data
+            if agent.replay_buffer.size() >= CONFIG["batch_size"]:
+                agent.train()
 
             # Update the state
             state = next_state
@@ -70,12 +76,16 @@ def train():
         if total_reward > best_reward:
             best_reward = total_reward
 
-        if episode % 10 == 0:  # Periodic logging
+        # Periodic logging
+        if episode % 10 == 0:  # Log every 10 episodes
+            avg_reward = np.mean(total_rewards[-100:]) if len(total_rewards) >= 100 else np.mean(total_rewards)
             print(
                 f"Episode {episode}/{CONFIG['num_episodes']}, "
                 f"Total Reward: {total_reward:.2f}, "
+                f"Average Reward (last 100): {avg_reward:.2f}, "
                 f"Best Reward: {best_reward:.2f}, "
-                f"Epsilon: {agent.epsilon:.3f}"
+                f"Epsilon: {agent.epsilon:.3f}, "
+                f"Duration: {time.time() - episode_start_time:.2f}s"
             )
 
     # Close the environment
@@ -83,8 +93,8 @@ def train():
 
     # Save rewards
     with open("training_rewards.txt", "w") as f:
-        for reward in total_rewards:
-            f.write(f"{reward}\n")
+        for episode, reward in enumerate(total_rewards, 1):
+            f.write(f"Episode {episode}: Reward {reward:.2f}\n")
 
     # Final save of the model
     try:
@@ -92,10 +102,8 @@ def train():
     except Exception as e:
         print(f"Error saving model: {e}")
 
-    print("Training complete. Model saved.")
+    print(f"Training complete. Model saved. Total training time: {time.time() - start_time:.2f} seconds.")
 
 
 if __name__ == "__main__":
-    start_time = time.time()
     train()
-    print(f"Training finished in {time.time() - start_time:.2f} seconds.")

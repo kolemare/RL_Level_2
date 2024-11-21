@@ -37,7 +37,7 @@ def test():
     rewards = []
 
     for episode in range(episodes):
-        state = env.reset()
+        state = env.reset().flatten()  # Ensure the state is flattened
         done = False
         episode_reward = 0
 
@@ -49,6 +49,7 @@ def test():
 
             # Step the environment
             next_state, reward, done, _ = env.step(action)
+            next_state = next_state.flatten()  # Ensure the next state is flattened
 
             # Render if enabled
             if CONFIG.get("render", True):

@@ -1,4 +1,6 @@
 .idea/*
 /venv
 /part5/__pycache__
+/flappybird/convolution_dqn/__pycache__
+/flappybird/lidar_dqn/__pycache__
 /__pycache__
