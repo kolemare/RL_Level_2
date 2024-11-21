@@ -2,6 +2,7 @@ import argparse
 import json
 from train import train
 from test import test
+from image_video import ImageVideo
 
 
 def main():
@@ -22,9 +23,12 @@ def main():
 
     # Call train or test with the loaded config dictionary
     if args.mode == "train":
+        ImageVideo.training = True
         train(config)
     elif args.mode == "test":
+        ImageVideo.training = False
         test(config)
+        ImageVideo.create_video(config['video_output'])
 
 
 if __name__ == "__main__":

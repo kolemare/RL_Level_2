@@ -10,11 +10,12 @@
     "epsilon_min": 0.05,
     "replay_buffer_capacity": 100000,
     "target_update_frequency": 10,
-    "save_frequency": 50,
+    "save_frequency": 10,
     "log_frequency": 10,
     "model_save_path": "dueling_dqn_flappy_bird.pth",
     "device": "cpu",
     "render_during_training": true,
-    "test_episodes": 5,
-    "test_rewards_path": "rewards.txt"
+    "test_episodes": 30,
+    "test_rewards_path": "rewards.txt",
+    "video_output": "test_video.mp4"
 }

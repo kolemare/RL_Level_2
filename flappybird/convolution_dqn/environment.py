@@ -3,6 +3,7 @@ import flappy_bird_gymnasium
 import numpy as np
 from typing import Optional, Tuple
 from PIL import Image
+from image_video import ImageVideo
 
 
 class FlappyBirdEnv:
@@ -44,6 +45,9 @@ class FlappyBirdEnv:
         """
         _, reward, done, _, info = self.env.step(action)
         frame = self.render_frame()
+        if not ImageVideo.training:
+            image = Image.fromarray(frame)
+            ImageVideo.add_image(image)
         processed_frame = self.preprocess_frame(frame)
         return processed_frame, reward, done, info
 

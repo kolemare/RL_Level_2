@@ -57,7 +57,6 @@ def test(config):
 
             # Render the game to visually debug
             rendered_frame = env.render_frame()
-            print(f"[DEBUG] Rendered frame shape: {rendered_frame.shape}")
 
         total_rewards.append(total_reward)
         print(f"Episode {episode + 1}/{num_episodes}, Total Reward: {total_reward:.2f}")
