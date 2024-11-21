@@ -34,7 +34,7 @@ class ImageVideo:
 
         # Define the codec and create a VideoWriter object
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4 codec
-        fps = 5  # Delay of 0.05 second between frames -> 10 frames per second
+        fps = 20
         out = cv2.VideoWriter(output_path, fourcc, fps, size)
 
         for img in ImageVideo.images:

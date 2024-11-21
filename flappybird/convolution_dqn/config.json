@@ -15,7 +15,7 @@
     "model_save_path": "dueling_dqn_flappy_bird.pth",
     "device": "cpu",
     "render_during_training": true,
-    "test_episodes": 30,
+    "test_episodes": 10,
     "test_rewards_path": "rewards.txt",
     "video_output": "test_video.mp4"
 }

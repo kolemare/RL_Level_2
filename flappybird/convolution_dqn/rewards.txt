@@ -1,0 +1,11 @@
+Episode 1: 36.60
+Episode 2: 18.70
+Episode 3: 17.90
+Episode 4: 3.90
+Episode 5: 3.30
+Episode 6: 31.90
+Episode 7: 3.90
+Episode 8: 6.70
+Episode 9: 18.60
+Episode 10: 8.40
+Average Reward: 14.99
